@@ -55,7 +55,7 @@ async def adjust_img(bot, str_raw: str, is_ans: bool = False, save: bool = False
     flit_msg = flit_msg.replace('\#', '#')
     return str_raw if not is_ans else flit_msg
 
-async def msg_save(bot,uid,gid,msg):
+async def msg_save(bot,uid,gid,gname,msg):
     try:
         if not exists(join(FILE_PATH,f'bottle')):#创建bottle文件夹
             makedirs(join(FILE_PATH,f'bottle'))
@@ -66,6 +66,7 @@ async def msg_save(bot,uid,gid,msg):
                 'msg' : msg,
                 'uid' : uid,
                 'gid' : gid,
+                'gname' : gname,
                 'id'  : 1,
                 'time' : 0,
                 'comment' : []     
@@ -81,6 +82,7 @@ async def msg_save(bot,uid,gid,msg):
                 'msg' : msg,
                 'uid' : uid,
                 'gid' : gid,
+                'gname' : gname,
                 'id'  : id,
                 'time' : 0,
                 'comment' : []
@@ -99,7 +101,7 @@ async def check_member(bot,uid,gid):
             return True
     return False 
 
-async def get_drift(bot):#msg,comm,time,gid,uid,id 
+async def get_drift(bot):#msg,comm,time,gid,uid,id,gname
     try:
         if not exists(join(FILE_PATH,f'bottle/data.json')):
             return '','',0,0,0,False
@@ -130,7 +132,8 @@ async def get_drift(bot):#msg,comm,time,gid,uid,id
         gid = bottle['gid']
         uid = bottle['uid']
         id = bottle['id']
-        return msg,comm,time,gid,uid,id
+        gname = bottle['gname']
+        return msg,comm,time,gid,uid,id,gname
     except Exception as e:
         print(e)
         return '','',0,0,0,False
