@@ -13,9 +13,10 @@ plmt = DailyNumberLimiter(5)#捡漂流瓶次数
 clmt = DailyNumberLimiter(5)#评论次数
 sv = Service('漂流瓶',help_=sv_help)
 
-@sv.on_prefix('扔漂流瓶')
+@sv.on_prefix('写漂流瓶','扔漂流瓶','丢漂流瓶')
 async def drop_bottle(bot,ev:CQEvent):
     uid = ev.user_id
+    gname = ev["sender"]['card'] or ev["sender"]["nickname"]
     if not tlmt.check(f't{uid}'):
         await bot.send(ev,f'今天已经扔过{tlmt}次漂流瓶啦，请明天再来',at_sender = True)
         return
@@ -24,7 +25,7 @@ async def drop_bottle(bot,ev:CQEvent):
         if not msg:
             await bot.send(ev,'这个瓶子空空如也,消失在海面上')
             return
-        id= await msg_save(bot,uid = ev.user_id,gid = ev.group_id,msg=msg)
+        id= await msg_save(bot,uid = ev.user_id,gid = ev.group_id,gname=gname,msg=msg)
         if not id:
             await bot.send(ev,'忽然间狂风大作,扔出的漂流瓶撞碎在礁石上,它再也没有被捡起的机会了')
             return
@@ -40,22 +41,30 @@ async def get_bottle(bot,ev:CQEvent):
         await bot.send(ev,f'你今天已经捡过{plmt}次漂流瓶了哦,明天再来吧',at_sender = True)
         return
     try:
-        msg,comm,time,gid,uid,id = await get_drift(bot)
+        msg,comm,time,gid,uid,id,gname = await get_drift(bot)
         if not id:
             await bot.send(ev,'海面空空如也，等一段时间再来吧',at_sender = True)
             return
-        info = await bot.get_stranger_info(self_id = ev.self_id,uesr_id = uid)
+        # 此方法无法正常获取信息，暂时注释
+        # info = await bot.get_stranger_info(self_id = ev.self_id,uesr_id = uid)
         ginfo = await bot.get_group_info(self_id = ev.self_id,group_id = gid)
         message = f'bid:{id}\n'
         if ginfo['group_name']:
-            message += f'捡到来自群{ginfo["group_name"]}({gid})的漂流瓶\n'
+            result_str = replace_group_name(ginfo['group_name'])
+            # message += f'捡到来自群{ginfo["group_name"]}({gid})的漂流瓶\n'
+            message += f'捡到来自群 {result_str} 的漂流瓶\n'
         else:
-            message += f'捡到来自群{gid}的漂流瓶\n'
-        if info["nickname"]:
-            message += f'发送者{info["nickname"]}{uid}\n——————————\n'
+            # message += f'捡到来自群{gid}的漂流瓶\n'
+            message += f'捡到了一个神秘的漂流瓶\n'
+        # if info["nickname"]:
+        if gname:
+            # message += f'发送者 {info["nickname"]}{uid}\n——————————\n'
+            message += f'发送者 {gname}\n——————————\n'
         else:
-            message += f'发送者{uid}\n——————————\n'
-        message += f'{msg}\n——————————\n{comm}(此漂流瓶已被捡起{time}次,回复此消息可以评论)'
+            # message += f'发送者{uid}\n——————————\n'
+            message += f'发送者的姓名无法看清\n——————————\n'
+        # message += f'{msg}\n——————————\n{comm}(此漂流瓶已被捡起{time}次,回复此消息可以评论)'
+        message += f'{msg}\n——————————\n{comm}(此漂流瓶已被捡起{time}次)'
         plmt.increase(f'p{uuid}')
         await bot.send(ev,message)
     except Exception as e:
@@ -66,7 +75,8 @@ async def add_comment(bot,ev: CQEvent):
     try:
         sid = ev.self_id
         uid = ev.user_id
-        gid = ev.group_id
+        # gid = ev.group_id
+        qq_name = ev["sender"]['card'] or ev["sender"]["nickname"]
         match = re.search(r"\[CQ:reply,id=(-?[0-9]*)\]", str(ev.message))
         if not match:
             return
@@ -106,8 +116,8 @@ async def add_comment(bot,ev: CQEvent):
                     await bot.send(ev,'评论失败：此漂流瓶已被销毁',at_sender = True)
                     return
                 clmt.increase(f'c{uid}')
-                await bot.send_group_msg(group_id = ggid,message = f'[CQ:at,qq={uuid}],你的漂流瓶id:{id}\n——————————\n{msg}\n——————————\n收到来自群{gid}：{uid}的评论:\n{comment}')              
-                time.sleep(3)
+                # await bot.send_group_msg(group_id = ggid,message = f'[CQ:at,qq={uuid}],你的漂流瓶id:{id}\n——————————\n{msg}\n——————————\n收到来自群{gid}：{uid}的评论:\n{comment}')              
+                # time.sleep(3)
                 await bot.send(ev,'评论成功') 
             else:return
         else:return
@@ -143,3 +153,18 @@ async def show_drift(bot,ev:CQEvent):
         await bot.send(ev,msg)
     except Exception as e:
         await bot.send(ev,f'发送失败:{e}')
+
+
+def replace_group_name(group_name):
+    length = len(group_name)
+    if length <= 1:
+        return group_name  # 当长度为1或更短时，直接返回原文本
+    num_asterisks = length // 3  # 计算 "*" 的数量
+    if num_asterisks < 1:
+        num_asterisks = 1
+    # 计算需要替换的字符串的起始和结束索引
+    start_index = (length - num_asterisks) // 2
+    end_index = start_index + num_asterisks
+    # 构建替换后的字符串
+    result_str = group_name[:start_index] + '*' * num_asterisks + group_name[end_index:]
+    return result_str
